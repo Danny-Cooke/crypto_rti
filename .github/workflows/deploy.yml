@@ -1,0 +1,79 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        type: choice
+        options:
+          - prod
+          - dev
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_VAR_FILE: "terraform.tfvars"
+
+jobs:
+  terraform:
+    name: "${{ inputs.action }} - ${{ inputs.environment }}"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract AWS account ID from tfvars
+        id: tfvars
+        run: |
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+          echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.tfvars.outputs.aws_account_id }}:role/github-oidc
+          role-session-name: github-actions-terraform
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive ../..
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: inputs.action != 'destroy'
+        run: terraform plan -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Plan (Destroy)
+        if: inputs.action == 'destroy'
+        run: terraform plan -destroy -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply' || inputs.action == 'destroy'
+        run: terraform apply -auto-approve tfplan

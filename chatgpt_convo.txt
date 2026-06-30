@@ -1,0 +1,961 @@
+That’s fine — then we redesign around “bootstrap data collection” instead of paid historical L2. You can still build this, but the plan changes: collect your own live data first, use free samples/open datasets where possible, and delay ML until you have enough clean history.
+
+Thought for 7s
+
+That is not a blocker. It just means you should bootstrap the project differently.
+
+The budget version is:
+
+Do not buy historical L2 data.
+Collect your own live L2 data.
+Use free historical trades/candles for rough testing.
+Use small/free L2 samples only for prototyping.
+Delay serious ML until you have your own dataset.
+
+You can still build this properly.
+
+The realistic truth
+
+Free crypto data is usually available in these forms:
+
+Data type	Free/easy?	Useful for your idea?
+OHLCV candles	Yes	Low
+Historical trades	Yes	Medium
+Live order book WebSocket	Yes	High
+Historical L2 order-book replay	Usually no	Very high
+Clean multi-month L2 datasets	Usually paid	Very high
+
+Binance has a public market-data download site, Binance Data Collection, with spot/futures data files such as trades, aggregate trades and klines. Binance’s public data GitHub says the files are available as daily/monthly downloads and that new daily data is generally available the next day.
+
+But that is not the same as full historical L2 book replay.
+
+So the free route is:
+
+Use Binance/Coinbase live WebSockets now
+Record everything yourself
+Build your own L2 dataset over time
+You are not wasting your time
+
+You are only wasting time if you try to recreate a paid data vendor before proving anything.
+
+A smart no-Tardis plan is:
+
+Phase 1: collect live BTC L2 data for 2–4 weeks
+Phase 2: build features and test simple predictive relationships
+Phase 3: paper trade live using your own collector
+Phase 4: only then move to AWS 24/7
+Phase 5: only then tiny live Coinbase spot trading
+
+This is very reasonable for you as a DevOps engineer.
+
+The new budget architecture
+
+Start with this:
+
+Local machine or cheap VPS
+        ↓
+Coinbase BTC-USD WebSocket
+Binance BTCUSDT WebSocket
+        ↓
+Raw event logger
+        ↓
+Compressed Parquet files
+        ↓
+Feature builder
+        ↓
+Backtest / replay
+        ↓
+Paper trader
+
+Only later:
+
+AWS EC2/ECS
+S3
+Postgres/TimescaleDB
+CloudWatch
+Secrets Manager
+
+Do not start with Kinesis, Kafka, EKS, or anything expensive.
+
+Minimum viable data collector
+
+For the first month, collect:
+
+Coinbase:
+- BTC-USD level2 order-book updates
+- BTC-USD trades
+- best bid/ask if available
+
+Binance:
+- BTCUSDT depth updates
+- BTCUSDT trades
+- optional: book ticker
+
+Store raw data first. Do not only store features.
+
+Raw data gives you the ability to rebuild features later.
+
+Recommended storage format:
+
+data/
+  exchange=coinbase/
+    symbol=BTC-USD/
+      date=2026-06-30/
+        channel=level2/
+          part-000.parquet
+        channel=trades/
+          part-000.parquet
+
+  exchange=binance/
+    symbol=BTCUSDT/
+      date=2026-06-30/
+        channel=depth/
+          part-000.parquet
+        channel=trades/
+          part-000.parquet
+
+Use Parquet + gzip/zstd/snappy compression.
+
+Free/cheap data sources you can use
+1. Binance public data
+
+Good for:
+
+historical trades
+aggTrades
+klines
+funding/open interest for futures depending on path
+
+Not enough for full MLOFI, but useful for:
+
+rough volatility testing
+fee/slippage threshold estimation
+trade-flow features
+market regime research
+
+Binance’s Data Collection site exposes spot/futures/option folders, and its public data GitHub describes daily/monthly downloadable market-data files.
+
+2. Coinbase live market data
+
+Coinbase Exchange APIs separate trading APIs from market-data APIs, and market data is public.
+
+Good for:
+
+live BTC-USD order book
+live trades
+your execution venue data
+3. Kaggle samples
+
+There are public Kaggle datasets with BTC L2 order-book snapshots, for example Binance BTCUSDT L2 snapshots at 1-second intervals.
+
+Good for:
+
+prototype feature code
+test storage schema
+practice imbalance/MLOFI calculations
+
+Bad for:
+
+serious strategy validation
+reliable live-trading conclusions
+
+Because many Kaggle datasets are short, snapshot-based, or from unknown collection quality.
+
+4. Tardis free samples
+
+Even if you cannot afford Tardis, their docs say some historical CSV datasets for the first day of each month are available without an API key for venues like Coinbase and Binance Futures.
+
+Good for:
+
+learning exact L2 event formats
+testing replay logic
+checking whether your MLOFI calculation works
+
+Not enough for:
+
+training a robust model
+proving a strategy over months
+The cheapest serious plan
+Step 1 — spend £0: build collector locally
+
+Run on your own machine for a few days.
+
+Build:
+
+coinbase_ws_collector.py
+binance_ws_collector.py
+parquet_writer.py
+health_monitor.py
+
+Success criteria:
+
+runs overnight
+reconnects automatically
+writes valid parquet
+does not silently lose sequence
+logs latency and disconnects
+Step 2 — spend maybe £5–£20/month: cheap VPS or small AWS EC2
+
+You can use AWS if you prefer, but keep it tiny.
+
+Use:
+
+EC2 t4g.small / t4g.medium
+EBS gp3 volume
+S3 lifecycle storage
+Docker Compose
+CloudWatch basic logs
+
+Or use a cheap VPS if cost matters more than AWS experience.
+
+Goal:
+
+collect 24/7 BTC data for 30 days
+
+You do not need a big machine to record BTC-only L2/trades.
+
+Step 3 — after 2–4 weeks: first research
+
+Build features:
+
+spread
+mid price
+top 5 imbalance
+top 10 imbalance
+MLOFI
+trade imbalance
+cumulative delta
+realized volatility
+future returns
+
+Do bucket tests:
+
+MLOFI top decile vs future 1s/5s/10s returns
+MLOFI bottom decile vs future returns
+signal strength during low/high spread
+signal strength during low/high volatility
+
+You are looking for:
+
+Does this signal predict movement after fees?
+Does it decay quickly?
+Does it work only at certain times?
+Does Coinbase follow Binance?
+Does Binance lead Coinbase?
+Step 4 — after 30–60 days: paper trade
+
+Do not wait for ML.
+
+Create two simple strategies:
+
+1. OFI continuation
+2. Absorption reversal
+
+Paper trade live for at least 2–4 weeks.
+
+Step 5 — after paper trading: tiny live
+
+Use Coinbase spot only.
+
+tiny size
+limit orders
+no leverage
+hard daily stop
+manual kill switch
+Should you still use AWS?
+
+Yes, but not immediately.
+
+Use local first if:
+you are still building collectors
+you are experimenting with schemas
+you have no tested signal yet
+you want to avoid cost creep
+Use AWS once:
+the collector works
+you want 24/7 collection
+you want proper logs/alerts
+you are paper trading
+you need stable uptime
+
+Your AWS MVP should be boring:
+
+1 EC2 instance
+Docker Compose
+S3 bucket
+Secrets Manager
+CloudWatch alarms
+
+That is enough.
+
+What not being able to afford Tardis changes
+
+It changes your timeline.
+
+With paid historical L2:
+
+You can test months/years immediately.
+
+Without paid historical L2:
+
+You must collect data first.
+You need patience.
+Your first month is mostly data engineering.
+ML comes later.
+
+But this is not bad. It may actually make you understand the system better.
+
+My updated recommendation
+
+Do this:
+
+1. Do not pay for data yet.
+2. Use Binance public historical trades/klines for rough background research.
+3. Use free Tardis/Kaggle L2 samples only to test your code.
+4. Build your own live Coinbase + Binance BTC data collector.
+5. Run it locally for 3 days.
+6. Move it to cheap AWS only after it is stable.
+7. Collect 30 days of BTC L2/trade data.
+8. Build MLOFI/order-flow features.
+9. Test signal buckets.
+10. Paper trade.
+
+This is the right low-cost path.
+
+The most valuable first project is not “the bot.” It is:
+
+A reliable BTC order-book recorder and replay engine.
+
+Once you have that, you own an asset: your own dataset, your own replay system, and your own research platform.
+
+can i not just pull the history data from coinbase and binance and store it myself in AWS? 
+Thought for 4s
+
+Yes — but only partly.
+
+You can pull and store historical data from Coinbase and Binance yourself in AWS for:
+
+- Candles / OHLCV
+- Historical trades
+- Aggregate trades
+- Recent order-book snapshots
+- Live order-book updates going forward
+
+But you generally cannot pull months or years of full historical L2 order-book updates directly from Coinbase/Binance public APIs as if it were a normal REST endpoint.
+
+That is the key difference.
+
+What you can get historically
+Binance
+
+Binance has a public data site where you can download daily/monthly market-data files. Their public data repo says the site provides public market data in daily or monthly files, with daily data usually available the next day.
+
+For Binance, you can easily get historical:
+
+- Klines / candles
+- Trades
+- Aggregate trades
+
+Binance’s market data docs also point users needing historical aggregate trade data to data.binance.vision.
+
+So Binance is good for free historical trades/candles, but not free full historical L2 replay.
+
+Coinbase
+
+Coinbase Exchange has public market-data APIs, separate from trading APIs.
+
+Coinbase provides historical candle data through its product candles endpoint. The docs describe it as “historic rates for a product,” returned in grouped buckets.
+
+Coinbase WebSocket market data is real-time, and its Advanced Trade WebSocket docs list a level2 channel for order-book updates.
+
+So Coinbase is good for:
+
+- Historical candles
+- Real-time trades
+- Real-time L2 updates
+- Current order-book snapshots
+
+But again, not easy free full historical L2 replay.
+
+What you probably cannot get for free
+
+What you want for proper MLOFI research is:
+
+Every order-book update
+Every bid/ask size change
+Every price-level insert/update/delete
+With timestamps
+Across weeks/months
+
+That is historical L2 event data.
+
+Exchanges usually give this to you live via WebSocket, but they do not usually let retail users call:
+
+GET /historical-level2?symbol=BTC-USD&from=2025-01-01&to=2025-06-01
+
+That is why vendors like Tardis, Kaiko, CoinAPI, Amberdata, etc. exist.
+
+So the practical answer is this
+
+You can do:
+
+1. Backfill historical candles/trades from Binance/Coinbase.
+2. Start collecting live L2 order-book data now.
+3. Store your own L2 history from this point forward in AWS.
+
+You cannot realistically do:
+
+1. Pull years of historical L2 order-book updates directly from Coinbase/Binance for free.
+2. Reconstruct a perfect historical order book from candles.
+3. Properly backtest MLOFI using only OHLCV candles.
+Recommended AWS storage plan
+
+Since you prefer AWS, this is reasonable.
+
+Store raw data in S3
+
+Use S3 as your source of truth:
+
+s3://your-bucket/market-data/
+  exchange=binance/
+    symbol=BTCUSDT/
+      data_type=agg_trades/
+        date=2026-06-30/
+          part-000.parquet
+
+      data_type=depth_updates/
+        date=2026-06-30/
+          part-000.parquet
+
+  exchange=coinbase/
+    symbol=BTC-USD/
+      data_type=trades/
+        date=2026-06-30/
+          part-000.parquet
+
+      data_type=level2/
+        date=2026-06-30/
+          part-000.parquet
+Store processed features separately
+s3://your-bucket/features/
+  symbol=BTC-USD/
+    feature_set=orderflow_v1/
+      date=2026-06-30/
+        features.parquet
+Optional hot database
+
+Use Postgres/TimescaleDB only for recent/live queries:
+
+latest order book
+latest features
+paper trades
+live orders
+fills
+PnL
+risk state
+
+Do not try to put every raw L2 update into Postgres forever. That will become annoying and expensive. S3 Parquet is the better long-term store.
+
+Minimum realistic pipeline
+Historical backfill:
+Binance public data → S3
+Coinbase candles → S3
+
+Live collection:
+Binance WebSocket depth/trades → S3
+Coinbase WebSocket level2/trades → S3
+
+Processing:
+Raw events → local order book replay → features → S3
+
+Research:
+Athena/DuckDB/Pandas/Polars → feature tests/backtests
+
+Execution:
+Coinbase live API → risk engine → orders
+
+For your first version, I would use DuckDB + Parquet locally before Athena. It is cheaper and easier.
+
+What each data type is good for
+Data	Source	Good for
+Historical candles	Binance/Coinbase	Volatility regimes, rough context
+Historical trades	Binance	Trade-flow testing, volume bursts
+Live L2 updates	Binance/Coinbase WebSocket	MLOFI/order-book features
+Stored own L2 history	Your AWS S3	Serious backtesting later
+Coinbase private fills	Coinbase API	Execution/slippage/tax records
+The important limitation
+
+You cannot properly test a Level 2 strategy on historical candles.
+
+You can test broad things like:
+
+- Was BTC volatile?
+- What were trading sessions like?
+- What were rough drawdowns?
+- Did momentum work on 1m bars?
+
+But you cannot test:
+
+- Did bid liquidity get pulled before the move?
+- Did ask depth refresh?
+- Did MLOFI spike 3 seconds before price moved?
+- Did absorption occur at the bid?
+- Would my limit order have filled?
+
+For that, you need L2 history. If you cannot buy it, you must start collecting it now.
+
+My recommendation for you
+
+Yes, use AWS — but use it like this:
+
+Day 1–3
+
+Build collectors locally.
+
+- Binance public data backfill script
+- Coinbase candle backfill script
+- Coinbase live level2 collector
+- Binance live depth collector
+Week 1
+
+Move the live collectors to AWS.
+
+- 1 small EC2 instance
+- Docker Compose
+- S3 Parquet writer
+- CloudWatch alarm if collector dies
+Weeks 2–4
+
+Collect BTC-only data 24/7.
+
+- Coinbase BTC-USD L2/trades
+- Binance BTCUSDT depth/trades
+After 2–4 weeks
+
+Start feature research.
+
+- MLOFI
+- trade imbalance
+- spread
+- depth
+- forward returns
+- Binance lead / Coinbase follow tests
+After 1–2 months
+
+Paper trade.
+
+After paper trading works
+
+Tiny live Coinbase spot.
+
+Bottom line
+
+Yes, you can pull historical candles/trades from Coinbase/Binance and store them in AWS.
+
+No, you probably cannot pull full historical L2 order-book event history from them for free.
+
+The best low-cost plan is:
+
+Backfill what is free.
+Start collecting live L2 now.
+Store it in S3.
+Build your own historical L2 dataset from today forward.
+
+That is not wasting your time. That is exactly how I would bootstrap this without paying for Tardis.
+
+ok so can we build some sort of data collector please ? 
+Do we store it in S3? can we get the data collector running first and would lambda do good for it? my preference being i would prefer to keep it cheap / free if possible. if not possible then im happy to has an EC2 do the work. 
+
+Also my preference being whatever we build now also needs to be fast becasue we will be using it for live trading too when we get further down this path ? ? 
+i dont want to build something now that wont do the job or be real time useful in the future. 
+
+happy to run an EC2 permenently now
+Compare with other AI
+Liner
+Gemini
+Claude
+
+Yes — we can build this as a production-shaped collector from the start, but keep v1 cheap. I’ll design it so the same live feed path can later feed trading decisions, while raw data is archived to S3 for research.
+
+Thought for 8s
+
+Yes. We can build a proper collector, and yes, S3 is the right long-term store.
+
+But for the live-trading path, the answer is:
+
+S3 is for storage/research.
+Memory/Redis/queue is for real-time trading.
+
+Do not make the future live strategy read from S3. The collector should publish live events/features in memory or a local queue, while also writing raw data to S3 in batches.
+
+Should Lambda run the collector?
+
+No — not for the main collector.
+
+AWS Lambda has a maximum execution duration of 15 minutes, and AWS describes Lambda as a short-lived compute environment rather than a persistent process. A WebSocket order-book collector needs long-running connections, reconnect handling, sequencing, buffering, and local state.
+
+Lambda is useful later for:
+
+- Daily compaction jobs
+- S3 lifecycle/reporting jobs
+- Health checks
+- Cost alerts
+- Backfill jobs
+- Telegram/Slack alert forwarding
+
+But not for:
+
+- Persistent Binance/Coinbase WebSocket feeds
+- Local order-book reconstruction
+- Live trading loop
+
+For that, use EC2 first. ECS later.
+
+Recommended v1 architecture
+
+Since you are happy to run EC2 permanently, I would build this:
+
+EC2 instance
+  └── Docker Compose
+        ├── collector-binance
+        ├── collector-coinbase
+        ├── feature-engine
+        ├── s3-writer
+        ├── paper-trader later
+        └── risk-engine later
+
+S3
+  ├── raw WebSocket events
+  ├── normalized events
+  ├── order-book snapshots
+  └── feature datasets
+
+CloudWatch
+  ├── process heartbeat
+  ├── disconnect alerts
+  ├── sequence-gap alerts
+  └── disk/memory alerts
+
+For now, the collector and writer can be the same process. Later, we split them.
+
+The important design choice
+
+Build two paths from day one:
+
+                 ┌───────────────→ S3 raw archive
+Exchange WS ─────┤
+                 └───────────────→ live in-memory feature path
+
+That way:
+
+You collect research data.
+You are not locked into a slow batch design.
+The same collector can later feed the trading engine.
+The live signal does not depend on S3 latency.
+Exchange feeds to start with
+Binance
+
+Use Binance public WebSocket streams for BTCUSDT. Binance documents diff-depth streams like <symbol>@depth or <symbol>@depth@100ms, which provide order-book price and quantity updates used to maintain a local order book.
+
+For a proper local order book, Binance says to open the depth stream, buffer events, fetch a REST depth snapshot, discard stale events, apply valid sequential updates, and restart if an update gap occurs.
+
+Coinbase
+
+Coinbase’s Advanced Trade WebSocket docs say the level2 channel guarantees delivery of all updates and is the easiest way to keep an order-book snapshot in sync.
+
+For execution later, Coinbase is the more sensible venue for you in the UK. For data now, collect both Binance and Coinbase.
+
+What we should build first
+
+I would start with one repo and one collector that supports both venues.
+
+v1 collector requirements
+- Connect to Binance BTCUSDT depth/trade streams
+- Connect to Coinbase BTC-USD level2/trade streams
+- Auto-reconnect
+- Timestamp every message locally
+- Store raw JSONL locally
+- Rotate files every 1–5 minutes
+- Compress files
+- Upload to S3
+- Keep recent events in memory for live features
+- Emit heartbeat logs
+- Detect stale feed
+v2 collector requirements
+- Reconstruct local order book
+- Validate Binance sequence IDs
+- Validate Coinbase sequence/time consistency where available
+- Generate top-of-book and top-10 snapshots
+- Generate MLOFI features
+- Write feature parquet to S3
+- Publish latest feature state to Redis or local socket
+
+Do not overbuild v1. First success is: run for 24 hours without losing data or silently dying.
+
+Storage format
+
+For raw capture, start with compressed JSONL. It is simple, robust, and easy to debug.
+
+s3://btc-orderflow-data/raw/
+  exchange=binance/
+    symbol=BTCUSDT/
+      channel=depth/
+        date=2026-06-30/
+          hour=14/
+            part-000.jsonl.gz
+
+  exchange=coinbase/
+    symbol=BTC-USD/
+      channel=level2/
+        date=2026-06-30/
+          hour=14/
+            part-000.jsonl.gz
+
+Later, convert to Parquet:
+
+s3://btc-orderflow-data/normalized/
+  exchange=coinbase/
+    symbol=BTC-USD/
+      event_type=l2_update/
+        date=2026-06-30/
+          part-000.parquet
+
+Why JSONL first?
+
+- Very easy to debug
+- Handles schema changes
+- Preserves the original message
+- Good for raw audit trail
+- No need to perfect schema before collecting
+
+Why Parquet later?
+
+- Much faster research queries
+- Much smaller storage
+- Better for DuckDB/Athena/Polars
+EC2 sizing
+
+For BTC-only, you do not need a big machine.
+
+Start with:
+
+t4g.small or t4g.medium
+Ubuntu
+Docker Compose
+20–50 GB gp3 EBS
+S3 bucket
+IAM role attached to EC2 for S3 writes
+
+If you want x86 compatibility instead of ARM:
+
+t3.small or t3.medium
+
+Use ARM/Graviton if your Python dependencies behave. Use x86 if you want fewer compatibility surprises.
+
+S3 is pay-as-you-go with no minimum charge, and AWS lists storage, requests, retrieval, and data transfer as the main S3 cost components.
+
+For BTC-only compressed raw data, your S3 bill should usually be modest, but we should design file batching carefully because excessive tiny files can increase request/query overhead.
+
+Cheap/free approach
+
+The cheapest sane setup:
+
+Compute:
+- One small EC2 instance
+
+Storage:
+- Local EBS temporary buffer
+- S3 compressed archive
+
+Database:
+- None at first
+
+Monitoring:
+- CloudWatch logs
+- Simple cron/systemd/docker restart
+
+Avoid at first:
+
+- RDS
+- Kinesis
+- MSK/Kafka
+- EKS
+- OpenSearch
+- NAT Gateway
+- Multi-AZ anything
+
+NAT Gateway especially can surprise you on cost. For a simple public EC2 instance writing to S3, you do not need it.
+
+Real-time readiness
+
+You are right to worry about building something that will not work later.
+
+So we build it like this:
+
+Collector process
+WebSocket event received
+        ↓
+Timestamp immediately
+        ↓
+Push to in-memory event bus
+        ↓
+Append to local rotating file buffer
+        ↓
+Feature engine reads from memory
+        ↓
+S3 writer uploads compressed file every N seconds
+
+The future trading engine will use this path:
+
+WebSocket → local book → features → strategy → risk → execution
+
+The research path uses this path:
+
+WebSocket → raw archive → replay → features → backtest
+
+So we are not throwing v1 away later.
+
+Code structure
+
+I would create this repo:
+
+btc-orderflow/
+  docker-compose.yml
+  .env.example
+  pyproject.toml
+
+  src/
+    collectors/
+      binance_ws.py
+      coinbase_ws.py
+      runner.py
+
+    storage/
+      rotating_jsonl_writer.py
+      s3_uploader.py
+
+    orderbook/
+      binance_book.py
+      coinbase_book.py
+
+    features/
+      mlofi.py
+      imbalance.py
+
+    common/
+      logging.py
+      settings.py
+      time.py
+      schemas.py
+
+  scripts/
+    run_collector.sh
+    backfill_binance_public_data.py
+    compact_jsonl_to_parquet.py
+
+  infra/
+    iam-policy-s3-writer.json
+    systemd/
+      btc-orderflow.service
+
+  data/
+    buffer/
+First implementation target
+
+I would build the first version as:
+
+collector.py
+
+It should subscribe to:
+
+Binance:
+- btcusdt@depth@100ms
+- btcusdt@trade or btcusdt@aggTrade
+
+Coinbase:
+- BTC-USD level2
+- BTC-USD market trades
+
+For Coinbase, if authentication is required for the exact level2 channel you use, we add JWT/key handling. Coinbase’s WebSocket docs currently describe market data endpoints and many channels as publicly available, but the level2 subscription example includes a JWT, so we should implement the connector so auth can be added without changing the architecture.
+
+Minimal AWS setup
+1. S3 bucket
+btc-orderflow-data-yourname
+
+Suggested lifecycle:
+
+raw JSONL gz:
+- S3 Standard for 30 days
+- S3 Standard-IA after 30 days
+- Glacier/Deep Archive after 180 days if you want
+
+normalized parquet:
+- S3 Standard or Standard-IA
+2. IAM role for EC2
+
+Allow only:
+
+s3:PutObject
+s3:GetObject
+s3:ListBucket
+
+Only for your bucket.
+
+3. EC2
+Ubuntu 24.04
+Docker
+Docker Compose
+IAM role attached
+CloudWatch agent optional
+4. Monitoring
+
+At minimum:
+
+- Docker restart policy: unless-stopped
+- Heartbeat log every 30 seconds
+- Alert if no messages for 60 seconds
+- Alert if upload fails
+- Alert if disk > 80%
+Cost control
+
+To keep this cheap:
+
+- Batch uploads every 1–5 minutes
+- Compress raw files with gzip or zstd
+- Do not write every event individually to S3
+- Do not use Kinesis yet
+- Do not use RDS yet
+- Use local disk as a temporary buffer
+- Use S3 lifecycle rules
+
+The biggest avoidable mistake is writing millions of tiny S3 objects. We should write fewer, larger compressed files.
+
+Good target:
+
+1 file per exchange / symbol / channel / 1–5 minutes
+My recommendation
+
+Build now:
+
+EC2 + Docker Compose + Python async WebSocket collectors + local rotating JSONL.gz + S3 upload
+
+Do not use Lambda for the live collector.
+
+Use S3 as the durable archive, but design the collector so the live trading engine can later consume directly from the in-memory/local event stream.
+
+First milestone
+
+The first milestone should be:
+
+Run for 24 hours collecting:
+- Binance BTCUSDT depth + trades
+- Coinbase BTC-USD level2 + trades
+- raw compressed files uploaded to S3
+- heartbeat logs
+- reconnects handled
+
+Once that works, the second milestone is:
+
+Replay the files locally and reconstruct top-of-book / MLOFI features.
+
+That is the correct foundation for live trading later.
