@@ -12,7 +12,7 @@ networking_ssh_allowed_cidrs   = ["145.224.67.159/32"]
 
 # --- Compute ---
 compute_instance_type    = "t4g.micro"
-compute_ami_filter       = "ubuntu/images/hvm-ssd-arm64/ubuntu-*-24.04-*"
+compute_ami_filter       = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-arm64-server-*"
 compute_ami_architecture = "arm64"
 compute_ebs_volume_size  = 10
 compute_ebs_volume_type  = "gp3"
