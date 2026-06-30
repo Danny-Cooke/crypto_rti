@@ -1,23 +1,3 @@
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"] # Canonical
-
-  filter {
-    name   = "name"
-    values = [var.compute_ami_filter]
-  }
-
-  filter {
-    name   = "architecture"
-    values = [var.compute_ami_architecture]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
 # --- IAM Role for EC2 ---
 
 resource "aws_iam_role" "collector" {
@@ -94,7 +74,7 @@ resource "aws_iam_role_policy" "cloudwatch_logs" {
 
 resource "aws_launch_template" "collector" {
   name_prefix   = "${var.common_project}-${var.common_environment}-collector-"
-  image_id      = data.aws_ami.ubuntu.id
+  image_id      = var.compute_ami_id
   instance_type = var.compute_instance_type
 
   iam_instance_profile {

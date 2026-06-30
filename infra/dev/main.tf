@@ -27,8 +27,7 @@ module "compute" {
   source = "../../modules/infra/dev/compute"
 
   compute_instance_type    = var.compute_instance_type
-  compute_ami_filter       = var.compute_ami_filter
-  compute_ami_architecture = var.compute_ami_architecture
+  compute_ami_id           = var.compute_ami_id
   compute_ebs_volume_size  = var.compute_ebs_volume_size
   compute_ebs_volume_type  = var.compute_ebs_volume_type
   compute_asg_min          = var.compute_asg_min

@@ -50,13 +50,8 @@ variable "compute_instance_type" {
   type        = string
 }
 
-variable "compute_ami_filter" {
-  description = "AMI name filter pattern for Ubuntu"
-  type        = string
-}
-
-variable "compute_ami_architecture" {
-  description = "AMI architecture (arm64 for Graviton, x86_64 for Intel/AMD)"
+variable "compute_ami_id" {
+  description = "AMI ID for the collector instance"
   type        = string
 }
 
