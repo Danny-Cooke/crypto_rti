@@ -102,7 +102,3 @@ variable "storage_s3_raw_lifecycle_ia_days" {
   type        = number
 }
 
-variable "storage_s3_raw_lifecycle_glacier_days" {
-  description = "Days before raw data transitions to Glacier (0 to disable)"
-  type        = number
-}

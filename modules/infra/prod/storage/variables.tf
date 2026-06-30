@@ -13,13 +13,13 @@ variable "storage_s3_raw_lifecycle_ia_days" {
   type        = number
 }
 
-variable "storage_s3_raw_lifecycle_glacier_days" {
-  description = "Days before raw data transitions to Glacier (0 to disable)"
-  type        = number
-}
-
 variable "storage_s3_vpc_endpoint_id" {
   description = "VPC endpoint ID for S3 access restriction"
+  type        = string
+}
+
+variable "storage_s3_oidc_role_arn" {
+  description = "ARN of the GitHub OIDC role to exempt from VPC-only deny"
   type        = string
 }
 

@@ -54,6 +54,9 @@ resource "aws_s3_bucket_policy" "vpc_only" {
           StringNotEquals = {
             "aws:sourceVpce" = var.storage_s3_vpc_endpoint_id
           }
+          ArnNotEquals = {
+            "aws:PrincipalArn" = var.storage_s3_oidc_role_arn
+          }
         }
       }
     ]
@@ -76,20 +79,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "data" {
     transition {
       days          = var.storage_s3_raw_lifecycle_ia_days
       storage_class = "STANDARD_IA"
-    }
-  }
-
-  rule {
-    id     = "raw-to-glacier"
-    status = var.storage_s3_raw_lifecycle_glacier_days > 0 ? "Enabled" : "Disabled"
-
-    filter {
-      prefix = "raw/"
-    }
-
-    transition {
-      days          = var.storage_s3_raw_lifecycle_glacier_days
-      storage_class = "GLACIER"
     }
   }
 }

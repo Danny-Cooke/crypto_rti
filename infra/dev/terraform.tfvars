@@ -24,4 +24,3 @@ compute_asg_desired      = 1
 storage_s3_bucket_prefix              = "crypto-rti"
 storage_s3_enable_versioning          = false
 storage_s3_raw_lifecycle_ia_days      = 7
-storage_s3_raw_lifecycle_glacier_days = 0
