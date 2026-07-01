@@ -26,7 +26,7 @@ EOF
 cat > /opt/${project}/Dockerfile <<'DOCKERFILE'
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
 
-RUN dnf install -y awscli2 && dnf clean all
+RUN dnf install -y aws-cli && dnf clean all
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
