@@ -48,6 +48,11 @@ variable "compute_s3_bucket_arn" {
   type        = string
 }
 
+variable "compute_s3_bucket_name" {
+  description = "Name of the S3 bucket for the collector application"
+  type        = string
+}
+
 variable "common_project" {
   description = "Project name used for resource naming and tagging"
   type        = string

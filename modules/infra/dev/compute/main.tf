@@ -93,7 +93,7 @@ resource "aws_launch_template" "collector" {
   }
 
   block_device_mappings {
-    device_name = "/dev/sda1"
+    device_name = "/dev/xvda"
 
     ebs {
       volume_size           = var.compute_ebs_volume_size
@@ -107,6 +107,7 @@ resource "aws_launch_template" "collector" {
     environment = var.common_environment
     project     = var.common_project
     region      = var.common_region
+    s3_bucket   = var.compute_s3_bucket_name
   }))
 
   tag_specifications {

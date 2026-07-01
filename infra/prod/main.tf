@@ -36,6 +36,7 @@ module "compute" {
   compute_security_group_id = module.networking.collector_security_group_id
   compute_subnet_ids        = module.networking.public_subnet_ids
   compute_s3_bucket_arn     = module.storage.bucket_arn
+  compute_s3_bucket_name    = module.storage.bucket_id
   common_project            = var.common_project
   common_environment        = var.common_environment
   common_region             = var.common_region
