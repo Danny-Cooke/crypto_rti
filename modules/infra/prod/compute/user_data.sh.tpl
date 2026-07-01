@@ -49,6 +49,6 @@ SCRIPT
 # --- Build and run ---
 cd /opt/${project}
 docker build -t ${project}-collector .
-docker run --rm --env-file .env ${project}-collector
+docker run --rm --network host --env-file .env ${project}-collector
 
 echo "${project} (${environment}) hello_world container finished" | logger -t ${project}
