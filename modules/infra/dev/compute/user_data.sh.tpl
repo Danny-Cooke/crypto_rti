@@ -39,11 +39,11 @@ cat > /opt/${project}/entrypoint.sh <<'SCRIPT'
 #!/bin/bash
 set -euo pipefail
 
-echo "Hello World from ${ENVIRONMENT} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/hello_world.txt
+echo "Hello World from $${ENVIRONMENT} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/hello_world.txt
 
-aws s3 cp /tmp/hello_world.txt "s3://${S3_BUCKET}/hello_world.txt"
+aws s3 cp /tmp/hello_world.txt "s3://$${S3_BUCKET}/hello_world.txt"
 
-echo "Successfully uploaded hello_world.txt to s3://${S3_BUCKET}/hello_world.txt"
+echo "Successfully uploaded hello_world.txt to s3://$${S3_BUCKET}/hello_world.txt"
 SCRIPT
 
 # --- Build and run ---
