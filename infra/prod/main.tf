@@ -17,7 +17,10 @@ module "storage" {
   storage_s3_enable_versioning          = var.storage_s3_enable_versioning
   storage_s3_raw_lifecycle_ia_days      = var.storage_s3_raw_lifecycle_ia_days
   storage_s3_vpc_endpoint_id            = module.networking.s3_vpc_endpoint_id
-  storage_s3_oidc_role_arn              = "arn:aws:iam::${var.common_aws_account_id}:role/github-oidc"
+  storage_s3_exempt_role_arns = [
+    "arn:aws:iam::${var.common_aws_account_id}:role/github-oidc",
+    "arn:aws:iam::${var.common_aws_account_id}:root"
+  ]
   common_project                        = var.common_project
   common_environment                    = var.common_environment
   common_region                         = var.common_region

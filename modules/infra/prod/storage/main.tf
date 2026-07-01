@@ -55,7 +55,7 @@ resource "aws_s3_bucket_policy" "vpc_only" {
             "aws:sourceVpce" = var.storage_s3_vpc_endpoint_id
           }
           ArnNotEquals = {
-            "aws:PrincipalArn" = var.storage_s3_oidc_role_arn
+            "aws:PrincipalArn" = var.storage_s3_exempt_role_arns
           }
         }
       }

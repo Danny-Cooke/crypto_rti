@@ -18,9 +18,9 @@ variable "storage_s3_vpc_endpoint_id" {
   type        = string
 }
 
-variable "storage_s3_oidc_role_arn" {
-  description = "ARN of the GitHub OIDC role to exempt from VPC-only deny"
-  type        = string
+variable "storage_s3_exempt_role_arns" {
+  description = "ARNs exempt from the VPC-only deny policy (e.g. OIDC role, root account)"
+  type        = list(string)
 }
 
 variable "common_project" {
