@@ -70,11 +70,17 @@ resource "aws_iam_role_policy" "cloudwatch_logs" {
   })
 }
 
+# --- AMI Lookup (AL2023 arm64 for Graviton) ---
+
+data "aws_ssm_parameter" "al2023_arm64" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64"
+}
+
 # --- Launch Template ---
 
 resource "aws_launch_template" "collector" {
   name_prefix   = "${var.common_project}-${var.common_environment}-collector-"
-  image_id      = var.compute_ami_id
+  image_id      = data.aws_ssm_parameter.al2023_arm64.value
   instance_type = var.compute_instance_type
 
   iam_instance_profile {

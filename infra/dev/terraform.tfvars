@@ -12,7 +12,6 @@ networking_ssh_allowed_cidrs   = ["145.224.67.159/32"]
 
 # --- Compute ---
 compute_instance_type    = "t4g.micro"
-compute_ami_id           = "ami-06468be052a4195a6"
 compute_ebs_volume_size  = 10
 compute_ebs_volume_type  = "gp3"
 compute_asg_min          = 1

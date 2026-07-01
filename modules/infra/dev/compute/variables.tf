@@ -3,11 +3,6 @@ variable "compute_instance_type" {
   type        = string
 }
 
-variable "compute_ami_id" {
-  description = "AMI ID for the collector instance"
-  type        = string
-}
-
 variable "compute_ebs_volume_size" {
   description = "Root EBS volume size in GB"
   type        = number
