@@ -1,7 +1,8 @@
 # --- Common ---
-common_project     = "crypto-rti"
-common_environment = "prod"
-common_region      = "us-east-1"
+common_aws_account_id = "953462525470"
+common_project        = "crypto-rti"
+common_environment    = "prod"
+common_region         = "us-east-1"
 
 # --- Networking ---
 networking_vpc_cidr            = "10.0.0.0/16"

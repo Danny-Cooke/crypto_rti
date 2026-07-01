@@ -1,3 +1,8 @@
+variable "common_aws_account_id" {
+  description = "AWS account ID"
+  type        = string
+}
+
 variable "common_project" {
   description = "Project name used for resource naming and tagging"
   type        = string

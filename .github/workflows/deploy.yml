@@ -68,14 +68,7 @@ jobs:
       - name: Extract AWS account ID from tfvars
         id: tfvars
         run: |
-          if grep -q 'common_aws_account_id' terraform.tfvars; then
-            ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
-          else
-            ACCOUNT_ID=$(grep 'common_aws_account_id' ../networking/terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/' 2>/dev/null || echo "")
-            if [[ -z "$ACCOUNT_ID" ]]; then
-              ACCOUNT_ID=$(grep -r 'common_aws_account_id' ../../ --include='*.tfvars' -m1 | sed 's/.*= *"\(.*\)"/\1/')
-            fi
-          fi
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials via OIDC
@@ -125,11 +118,7 @@ jobs:
       - name: Extract AWS account ID from tfvars
         id: tfvars
         run: |
-          if grep -q 'common_aws_account_id' terraform.tfvars; then
-            ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
-          else
-            ACCOUNT_ID=$(grep -r 'common_aws_account_id' ../../ --include='*.tfvars' -m1 | sed 's/.*= *"\(.*\)"/\1/')
-          fi
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials via OIDC
@@ -396,11 +385,7 @@ jobs:
       - name: Extract AWS account ID from tfvars
         id: tfvars
         run: |
-          if grep -q 'common_aws_account_id' terraform.tfvars; then
-            ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
-          else
-            ACCOUNT_ID=$(grep -r 'common_aws_account_id' ../../ --include='*.tfvars' -m1 | sed 's/.*= *"\(.*\)"/\1/')
-          fi
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials via OIDC
@@ -441,7 +426,7 @@ jobs:
       - name: Extract AWS account ID
         id: tfvars
         run: |
-          ACCOUNT_ID=$(grep -r 'common_aws_account_id' ../us-east-1/ --include='*.tfvars' -m1 | sed 's/.*= *"\(.*\)"/\1/')
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials via OIDC
