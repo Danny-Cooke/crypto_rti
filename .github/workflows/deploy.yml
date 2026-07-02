@@ -157,9 +157,8 @@ jobs:
     name: "storage - ${{ inputs.action }}"
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: infra/${{ inputs.environment }}/${{ inputs.region }}/storage
+    env:
+      STACK_DIR: infra/${{ inputs.environment }}/${{ inputs.region }}/storage
 
     steps:
       - name: Checkout
@@ -167,7 +166,7 @@ jobs:
 
       - name: Check storage directory exists
         run: |
-          if [[ ! -f terraform.tfvars ]]; then
+          if [[ ! -d "$STACK_DIR" ]]; then
             echo "No storage stack for this region, skipping"
             echo "skip=true" >> "$GITHUB_ENV"
           fi
@@ -175,6 +174,7 @@ jobs:
       - name: Extract AWS account ID from tfvars
         if: env.skip != 'true'
         id: tfvars
+        working-directory: ${{ env.STACK_DIR }}
         run: |
           ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
@@ -195,14 +195,17 @@ jobs:
 
       - name: Terraform Init
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform init
 
       - name: Terraform Plan
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform plan -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
 
       - name: Terraform Apply
         if: env.skip != 'true' && inputs.action == 'apply'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform apply -auto-approve tfplan
 
   all-compute:
@@ -211,9 +214,8 @@ jobs:
     name: "compute - ${{ inputs.action }}"
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: infra/${{ inputs.environment }}/${{ inputs.region }}/compute
+    env:
+      STACK_DIR: infra/${{ inputs.environment }}/${{ inputs.region }}/compute
 
     steps:
       - name: Checkout
@@ -221,7 +223,7 @@ jobs:
 
       - name: Check compute directory exists
         run: |
-          if [[ ! -f terraform.tfvars ]]; then
+          if [[ ! -d "$STACK_DIR" ]]; then
             echo "No compute stack for this region, skipping"
             echo "skip=true" >> "$GITHUB_ENV"
           fi
@@ -229,6 +231,7 @@ jobs:
       - name: Extract AWS account ID from tfvars
         if: env.skip != 'true'
         id: tfvars
+        working-directory: ${{ env.STACK_DIR }}
         run: |
           ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
@@ -249,14 +252,17 @@ jobs:
 
       - name: Terraform Init
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform init
 
       - name: Terraform Plan
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform plan -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
 
       - name: Terraform Apply
         if: env.skip != 'true' && inputs.action == 'apply'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform apply -auto-approve tfplan
 
   # --- Destroy all (reverse order) ---
@@ -266,9 +272,8 @@ jobs:
     name: "destroy compute"
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: infra/${{ inputs.environment }}/${{ inputs.region }}/compute
+    env:
+      STACK_DIR: infra/${{ inputs.environment }}/${{ inputs.region }}/compute
 
     steps:
       - name: Checkout
@@ -276,7 +281,7 @@ jobs:
 
       - name: Check compute directory exists
         run: |
-          if [[ ! -f terraform.tfvars ]]; then
+          if [[ ! -d "$STACK_DIR" ]]; then
             echo "No compute stack for this region, skipping"
             echo "skip=true" >> "$GITHUB_ENV"
           fi
@@ -284,6 +289,7 @@ jobs:
       - name: Extract AWS account ID from tfvars
         if: env.skip != 'true'
         id: tfvars
+        working-directory: ${{ env.STACK_DIR }}
         run: |
           ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
@@ -304,14 +310,17 @@ jobs:
 
       - name: Terraform Init
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform init
 
       - name: Terraform Plan (Destroy)
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform plan -destroy -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
 
       - name: Terraform Apply
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform apply -auto-approve tfplan
 
   destroy-storage:
@@ -320,9 +329,8 @@ jobs:
     name: "destroy storage"
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: infra/${{ inputs.environment }}/${{ inputs.region }}/storage
+    env:
+      STACK_DIR: infra/${{ inputs.environment }}/${{ inputs.region }}/storage
 
     steps:
       - name: Checkout
@@ -330,7 +338,7 @@ jobs:
 
       - name: Check storage directory exists
         run: |
-          if [[ ! -f terraform.tfvars ]]; then
+          if [[ ! -d "$STACK_DIR" ]]; then
             echo "No storage stack for this region, skipping"
             echo "skip=true" >> "$GITHUB_ENV"
           fi
@@ -338,6 +346,7 @@ jobs:
       - name: Extract AWS account ID from tfvars
         if: env.skip != 'true'
         id: tfvars
+        working-directory: ${{ env.STACK_DIR }}
         run: |
           ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
           echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
@@ -358,14 +367,17 @@ jobs:
 
       - name: Terraform Init
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform init
 
       - name: Terraform Plan (Destroy)
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform plan -destroy -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
 
       - name: Terraform Apply
         if: env.skip != 'true'
+        working-directory: ${{ env.STACK_DIR }}
         run: terraform apply -auto-approve tfplan
 
   destroy-networking:
