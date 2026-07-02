@@ -1,0 +1,254 @@
+name: Deploy Tokyo (ap-northeast-1)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        type: choice
+        options:
+          - prod
+          - dev
+      stack:
+        description: "Infrastructure stack to deploy"
+        required: true
+        type: choice
+        options:
+          - all
+          - networking
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_VAR_FILE: "terraform.tfvars"
+
+jobs:
+  # --- Single stack (networking only) ---
+  single:
+    if: inputs.stack == 'networking'
+    name: "${{ inputs.action }} - ${{ inputs.environment }}/ap-northeast-1/networking"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/${{ inputs.environment }}/ap-northeast-1/networking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract AWS account ID from tfvars
+        id: tfvars
+        run: |
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+          echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.tfvars.outputs.aws_account_id }}:role/github-oidc
+          role-session-name: github-actions-terraform
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: inputs.action != 'destroy'
+        run: terraform plan -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Plan (Destroy)
+        if: inputs.action == 'destroy'
+        run: terraform plan -destroy -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply' || inputs.action == 'destroy'
+        run: terraform apply -auto-approve tfplan
+
+  # --- Apply all: networking → peering ---
+  all-networking:
+    if: inputs.stack == 'all' && inputs.action != 'destroy'
+    name: "networking - ${{ inputs.action }}"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/${{ inputs.environment }}/ap-northeast-1/networking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract AWS account ID from tfvars
+        id: tfvars
+        run: |
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+          echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.tfvars.outputs.aws_account_id }}:role/github-oidc
+          role-session-name: github-actions-terraform
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
+
+  all-peering:
+    if: inputs.stack == 'all' && inputs.action != 'destroy'
+    needs: all-networking
+    name: "peering - ${{ inputs.action }}"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/${{ inputs.environment }}/peering
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract AWS account ID from tfvars
+        id: tfvars
+        run: |
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+          echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.tfvars.outputs.aws_account_id }}:role/github-oidc
+          role-session-name: github-actions-terraform
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
+
+  # --- Destroy all: peering → networking ---
+  destroy-peering:
+    if: inputs.stack == 'all' && inputs.action == 'destroy'
+    name: "destroy peering"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/${{ inputs.environment }}/peering
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract AWS account ID from tfvars
+        id: tfvars
+        run: |
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+          echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.tfvars.outputs.aws_account_id }}:role/github-oidc
+          role-session-name: github-actions-terraform
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan (Destroy)
+        run: terraform plan -destroy -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+  destroy-networking:
+    if: inputs.stack == 'all' && inputs.action == 'destroy'
+    needs: destroy-peering
+    name: "destroy networking"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/${{ inputs.environment }}/ap-northeast-1/networking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract AWS account ID from tfvars
+        id: tfvars
+        run: |
+          ACCOUNT_ID=$(grep 'common_aws_account_id' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+          echo "aws_account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.tfvars.outputs.aws_account_id }}:role/github-oidc
+          role-session-name: github-actions-terraform
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan (Destroy)
+        run: terraform plan -destroy -var-file="${{ env.TF_VAR_FILE }}" -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
