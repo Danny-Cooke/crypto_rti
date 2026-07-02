@@ -61,7 +61,11 @@ jobs:
       - name: Validate inputs
         run: |
           if [[ "${{ inputs.region }}" == "peering" ]]; then
-            echo "Error: Use 'all' stack for peering, or deploy peering region without a stack"
+            echo "::error::Peering has no sub-stacks. Select region=peering with stack=all instead."
+            exit 1
+          fi
+          if [[ "${{ inputs.region }}" == "ap-northeast-1" && "${{ inputs.stack }}" != "networking" ]]; then
+            echo "::error::Tokyo (ap-northeast-1) only has networking. Use stack=networking or stack=all."
             exit 1
           fi
 
